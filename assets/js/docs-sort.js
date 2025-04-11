@@ -14,9 +14,15 @@ jQuery(document).ready(function($) {
     });
 
     // Make docs sortable inside each category
+    // $(".docs-sortable").sortable({
+    //     connectWith: ".docs-sortable"
+    // });
     $(".docs-sortable").sortable({
-        connectWith: ".docs-sortable"
+        connectWith: ".docs-sortable",
+        handle: ".drag-handle", 
+        placeholder: "sortable-placeholder"
     });
+    
 
     // Save button
     $("#save-docs-order").on("click", function() {

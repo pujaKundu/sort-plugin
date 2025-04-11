@@ -17,7 +17,6 @@ class Sort_Plugin {
 
         // Frontend
         add_filter('the_content', [$this, 'display_all_categories_with_docs']); 
-    add_action('wp_enqueue_scripts', [$this, 'enqueue_frontend_scripts']); 
     }
 
     public function register_docs_post_type() {
@@ -91,6 +90,7 @@ class Sort_Plugin {
         return $terms;
     }
 
+    // Add the documentation page to the admin menu
     public function add_documentation_page() {
         add_submenu_page(
             'edit.php?post_type=docs',
@@ -115,7 +115,10 @@ class Sort_Plugin {
     <div id="sortable-accordion">
         <?php foreach ($categories as $category): ?>
             <div class="accordion-group" data-id="<?php echo esc_attr($category->term_id); ?>">
+               
                 <h3><?php echo esc_html($category->name); ?></h3>
+               
+                
                 <div>
                     <ul class="docs-sortable" data-category-id="<?php echo esc_attr($category->term_id); ?>">
                         <?php
@@ -133,7 +136,8 @@ class Sort_Plugin {
                         ]);
                         foreach ($docs as $doc): ?>
                             <li data-id="<?php echo esc_attr($doc->ID); ?>" style="margin:5px;padding:5px;border:1px solid #ccc;background:#fff;">
-                                <?php echo esc_html($doc->post_title); ?>
+                            <span class="drag-handle dashicons dashicons-move"></span>    
+                            <?php echo esc_html($doc->post_title); ?>
                             </li>
                         <?php endforeach; ?>
                     </ul>
@@ -184,53 +188,59 @@ class Sort_Plugin {
         wp_send_json_success('Order saved successfully');
     }
 
+    // display all categories with docs
     public function display_all_categories_with_docs($content) {
-    if (is_singular('docs') && in_the_loop() && is_main_query()) {
-        $categories = get_terms([
-            'taxonomy'   => 'category',
-            'hide_empty' => false,
-            'orderby'    => 'meta_value_num',
-            'meta_key'   => 'category_order',
-        ]);
-
-        if (!empty($categories) && !is_wp_error($categories)) {
-            $output = '<hr><h2>All Categories & Documentation</h2>';
-
-            foreach ($categories as $category) {
-                $output .= '<h3>' . esc_html($category->name) . '</h3>';
-
-                $docs = new WP_Query([
-                    'post_type'      => 'docs',
-                    'posts_per_page' => -1,
-                    'post_status'    => 'publish',
-                    'tax_query'      => [
-                        [
-                            'taxonomy' => 'category',
-                            'field'    => 'term_id',
-                            'terms'    => $category->term_id,
+        if (is_singular('docs') && in_the_loop() && is_main_query()) {
+            $categories = get_terms([
+                'taxonomy'   => 'category',
+                'hide_empty' => false,
+                'orderby'    => 'meta_value_num',
+                'meta_key'   => 'category_order',
+            ]);
+    
+            if (!empty($categories) && !is_wp_error($categories)) {
+                $output = '<hr><h2>All Categories & Documentation</h2>';
+    
+                foreach ($categories as $category) {
+                    $output .= '<div class="docs-category-block">';
+                    $output .= '<h3>' . esc_html($category->name) . '</h3>';
+    
+                    $docs = new WP_Query([
+                        'post_type'      => 'docs',
+                        'posts_per_page' => -1,
+                        'post_status'    => 'publish',
+                        'orderby'        => 'menu_order',
+                        'order'          => 'ASC',
+                        'tax_query'      => [
+                            [
+                                'taxonomy' => 'category',
+                                'field'    => 'term_id',
+                                'terms'    => $category->term_id,
+                            ],
                         ],
-                    ],
-                ]);
-
-                if ($docs->have_posts()) {
-                    $output .= '<ul>';
-                    while ($docs->have_posts()) {
-                        $docs->the_post();
-                        $output .= '<li><a href="' . get_permalink() . '">' . get_the_title() . '</a></li>';
+                    ]);
+    
+                    if ($docs->have_posts()) {
+                        $output .= '<ul class="docs-list">';
+                        while ($docs->have_posts()) {
+                            $docs->the_post();
+                            $output .= '<li><a href="' . get_permalink() . '">' . get_the_title() . '</a></li>';
+                        }
+                        $output .= '</ul>';
+                    } else {
+                        $output .= '<p>No docs in this category.</p>';
                     }
-                    $output .= '</ul>';
-                } else {
-                    $output .= '<p>No docs in this category.</p>';
+    
+                    $output .= '</div>';
+                    wp_reset_postdata();
                 }
-
-                wp_reset_postdata();
+    
+                $content .= $output;
             }
-
-            $content .= $output;
         }
+    
+        return $content;
     }
-
-    return $content;
-}
+    
 
 }
